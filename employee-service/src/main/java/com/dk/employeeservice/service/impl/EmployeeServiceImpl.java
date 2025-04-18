@@ -3,6 +3,7 @@ package com.dk.employeeservice.service.impl;
 import com.dk.employeeservice.dto.APIResponseDto;
 import com.dk.employeeservice.dto.DepartmentDto;
 import com.dk.employeeservice.dto.EmployeeDto;
+import com.dk.employeeservice.dto.OrganizationDto;
 import com.dk.employeeservice.entity.Employee;
 import com.dk.employeeservice.exception.EmailAlreadyExistsException;
 import com.dk.employeeservice.repository.EmployeeRepository;
@@ -12,6 +13,7 @@ import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Optional;
 
@@ -25,20 +27,22 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private APIClient apiClient;
 
+    private WebClient webClient;
+
     @Override
     public EmployeeDto saveEmployee(EmployeeDto employeeDto) {
 
         Optional<Employee> employeeOptional = employeeRepository.findByEmail(employeeDto.getEmail());
 
-        if(employeeOptional.isPresent()){
+        if (employeeOptional.isPresent()) {
             throw new EmailAlreadyExistsException("Email Already Exists for Employee");
         }
 
-        Employee employee = mapper.map(employeeDto,Employee.class);
+        Employee employee = mapper.map(employeeDto, Employee.class);
 
         Employee savedEmployee = employeeRepository.save(employee);
 
-        EmployeeDto savedEmployeeDto = mapper.map(savedEmployee,EmployeeDto.class);
+        EmployeeDto savedEmployeeDto = mapper.map(savedEmployee, EmployeeDto.class);
 
         return savedEmployeeDto;
     }
@@ -50,11 +54,18 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         ResponseEntity<DepartmentDto> departmentDto = apiClient.getDepartment(employee.getDepartmentCode());
 
-        EmployeeDto employeeDto = mapper.map(employee,EmployeeDto.class);
+        OrganizationDto organizationDto = webClient.get()
+                .uri("http://localhost:8083/api/organizations/" + employee.getOrganizationCode())
+                .retrieve()
+                .bodyToMono(OrganizationDto.class)
+                .block();
+
+        EmployeeDto employeeDto = mapper.map(employee, EmployeeDto.class);
 
         APIResponseDto apiResponseDto = new APIResponseDto(
                 employeeDto,
-                departmentDto.getBody()
+                departmentDto.getBody(),
+                organizationDto
         );
         return apiResponseDto;
 

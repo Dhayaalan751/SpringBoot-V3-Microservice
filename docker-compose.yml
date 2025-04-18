@@ -1,0 +1,88 @@
+version: "3.8"
+
+services:
+
+  service-registry:
+    build: ./service-registry
+    ports:
+      - "8761:8761"
+    networks:
+      - ms-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  config-server:
+    build: ./config-server
+    ports:
+      - "8888:8888"
+    networks:
+      - ms-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "9191:9191"
+    depends_on:
+      - config-server
+      - service-registry
+    networks:
+      - ms-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+
+  department-service:
+    build: ./department-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+      - config-server
+      - service-registry
+    networks:
+      - ms-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+
+  employee-service:
+    build: ./employee-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - rabbitmq
+      - config-server
+      - service-registry
+    networks:
+      - ms-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+
+  organization-service:
+    build: ./organization-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - rabbitmq
+      - config-server
+      - service-registry
+    networks:
+      - ms-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - ms-net
+
+networks:
+  ms-net:
