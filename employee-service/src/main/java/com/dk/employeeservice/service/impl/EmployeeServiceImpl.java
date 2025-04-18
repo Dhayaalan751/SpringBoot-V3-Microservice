@@ -55,7 +55,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         ResponseEntity<DepartmentDto> departmentDto = apiClient.getDepartment(employee.getDepartmentCode());
 
         OrganizationDto organizationDto = webClient.get()
-                .uri("http://localhost:8083/api/organizations/" + employee.getOrganizationCode())
+                .uri("http://organization-service:8083/api/organizations/" + employee.getOrganizationCode())
                 .retrieve()
                 .bodyToMono(OrganizationDto.class)
                 .block();

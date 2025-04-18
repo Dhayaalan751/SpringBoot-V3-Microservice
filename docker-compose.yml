@@ -1,88 +1,121 @@
-version: "3.8"
+version: '3.8'
 
 services:
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Dhayaalan@123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - microservices-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - microservices-net
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - microservices-net
 
   service-registry:
-    build: ./service-registry
+    build:
+      context: ./service-registry
+    container_name: service-registry
     ports:
       - "8761:8761"
     networks:
-      - ms-net
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
+      - microservices-net
 
   config-server:
-    build: ./config-server
+    build:
+      context: ./config-server
+    container_name: config-server
     ports:
       - "8888:8888"
-    networks:
-      - ms-net
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
+      SPRING_PROFILES_ACTIVE: git
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: https://github.com/Dhayaalan751/config-server-repo
+      SPRING_CLOUD_CONFIG_SERVER_GIT_CLONE_ON_START: "true"
+      SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: main
+    depends_on:
+      - service-registry
+    networks:
+      - microservices-net
 
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
     ports:
       - "9191:9191"
     depends_on:
       - config-server
       - service-registry
     networks:
-      - ms-net
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+      - microservices-net
 
   department-service:
-    build: ./department-service
+    build:
+      context: ./department-service
+    container_name: department-service
     ports:
       - "8080:8080"
     depends_on:
+      - mysql
       - rabbitmq
       - config-server
       - service-registry
     networks:
-      - ms-net
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+      - microservices-net
 
   employee-service:
-    build: ./employee-service
+    build:
+      context: ./employee-service
+    container_name: employee-service
     ports:
       - "8081:8081"
     depends_on:
+      - organization-service
+      - department-service
+      - mysql
       - rabbitmq
       - config-server
       - service-registry
     networks:
-      - ms-net
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+      - microservices-net
 
   organization-service:
-    build: ./organization-service
+    build:
+      context: ./organization-service
+    container_name: organization-service
     ports:
       - "8083:8083"
     depends_on:
+      - mysql
       - rabbitmq
       - config-server
       - service-registry
     networks:
-      - ms-net
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888/
+      - microservices-net
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - ms-net
+volumes:
+  mysql_data:
 
 networks:
-  ms-net:
+  microservices-net:
+    driver: bridge

@@ -17,8 +17,10 @@ public class EmployeeServiceApplication {
 	}
 
 	@Bean
-	public WebClient webClient(){
-		return WebClient.builder().build();
+	public WebClient webClient(WebClient.Builder builder){
+		return builder
+				.baseUrl("http://organization-service:8083")
+				.build();
 	}
 
 	public static void main(String[] args) {
